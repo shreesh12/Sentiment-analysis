@@ -1,0 +1,69 @@
+#Facebook sentiment analysis
+#Take the following inputs from user
+  #1. Access token
+  #2. FB page name
+  #3. FB Post ID
+#Extract the comments for that post and then find the frequency of occurence of major words
+#Prepare a wordcloud for the major words
+
+#Load the required libraries
+library(RCurl)
+library(rjson)
+library(tm) #package for text mining in R          
+library(Rfacebook)
+library(wordcloud) #Package for displaying the text analysis in wordcloud format
+
+#Take access token as input from user
+token = as.character(readline(prompt="Enter your access token: "))
+
+#Enter the FB page handle you want to take the data 
+fb_page = as.character(readline(prompt="Enter the FB page from where you'll take the post: "))
+
+#Get page data
+Page <-getPage(fb_page,token = token,n=30)
+View(Page)
+
+#Take the post ID as an input from user
+post_id = as.character(readline(prompt="Enter the ID of the post you want to analyze: "))
+
+#Get the post data (top 100 comments)
+post_data <- getPost(post_id, n = 100, token)
+               
+#Extract the comments separately
+z <- post_data$comments$message
+      
+z <- gsub("$","",z,perl = T)
+z <- gsub("<","",z,perl = T)
+z <- gsub(">","",z,perl = T)
+
+#Limit the comment length to 300 words
+for(i in 1:20)
+{
+  z[i] <- strtrim(z[i],300)
+}
+
+#Create a Corpora - docs containing natural text
+corpus <- Corpus(VectorSource(z))
+
+#Remove the punctuation and whitespaces
+corpus <- tm_map(corpus,removePunctuation)
+corpus <- tm_map(corpus,stripWhitespace)
+corpus <- tm_map(corpus,removeNumbers)
+
+#Remove the commonly occuring words
+corpus <- tm_map(corpus,removeWords, stopwords("english"))
+
+#Create the term document matrix
+my_tdm <- TermDocumentMatrix(corpus)
+m<- as.matrix(my_tdm)
+View(m)
+
+#Show only 2 columns of the matrix - with word and frequency
+words <- sort(rowSums(m),decreasing = TRUE)
+my_data <- data.frame(word = names(words), freq=words)
+View(my_data)
+
+#Generate the wordcloud view
+wordcloud(words = my_data$word, freq = my_data$freq, min.freq = 1, max.words = 100, random.order = FALSE, rot.per = 0.35, colors = brewer.pal(8,"Dark2"))
+
+
